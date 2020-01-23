@@ -31,9 +31,18 @@ gitlab:
 project_settings:
   gitlabform_tests_group/services_project:
     services:
-      asana:
-        api_key: foo
-        push_events: true
+      jenkins:
+        jenkins_url: "http://jenkins.example.com"
+        project_name: "my_project_name"
+      jira:
+        active: true
+        url: "http://jira.example.com"
+        username: "foo"
+        password: "bar"
+        merge_requests_events: true
+      slack:
+        webhook: "https://slack.example.com/services"
+        branches_to_be_notified: "all"
 """
 
 config_service_change = """
@@ -43,9 +52,18 @@ gitlab:
 project_settings:
   gitlabform_tests_group/services_project:
     services:
-      asana:
-        api_key: foo
-        push_events: false
+      jenkins:
+        jenkins_url: "http://jenkins.example.com"
+        project_name: "my_project_name_changed"
+      jira:
+        active: true
+        url: "http://jira.foobar.com"
+        username: "foo"
+        password: "bar"
+        merge_requests_events: true
+      slack:
+        webhook: "https://slack.example.com/services"
+        branches_to_be_notified: "default"
 """
 
 config_service_jira_commit_events = """
@@ -99,24 +117,51 @@ class TestServices:
         gf = GitLabForm(config_string=config_service, project_or_group=GROUP_AND_PROJECT_NAME)
         gf.main()
 
-        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'asana')
+        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'jenkins')
+        assert service['jenkins_url'] == "http://jenkins.example.com"
+        assert service['push_events'] == "my_project_name"
+
+        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'jira')
         assert service['active'] is True
-        assert service['push_events'] is True
+        assert service['url'] == "http://jira.example.com"
+        assert service['merge_requests_events'] is True
+
+        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'slack')
+        assert service['webhook'] == "https://slack.example.com/services"
+        assert service['branches_to_be_notified'] == "all"
 
     def test__if_change_works(self, gitlab):
         gf = GitLabForm(config_string=config_service, project_or_group=GROUP_AND_PROJECT_NAME)
         gf.main()
 
-        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'asana')
+        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'jenkins')
+        assert service['jenkins_url'] == "http://jenkins.example.com"
+        assert service['push_events'] == "my_project_name"
+
+        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'jira')
         assert service['active'] is True
-        assert service['push_events'] is True
+        assert service['url'] == "http://jira.example.com"
+        assert service['merge_requests_events'] is True
+
+        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'slack')
+        assert service['webhook'] == "https://slack.example.com/services"
+        assert service['branches_to_be_notified'] == "all"
 
         gf = GitLabForm(config_string=config_service_change, project_or_group=GROUP_AND_PROJECT_NAME, debug=True)
         gf.main()
 
-        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'asana')
+        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'jenkins')
+        assert service['jenkins_url'] == "http://jenkins.example.com"
+        assert service['push_events'] == "my_project_name_changed"
+
+        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'jira')
         assert service['active'] is True
-        assert service['push_events'] is False
+        assert service['url'] == "http://jira.foobar.com"
+        assert service['merge_requests_events'] is True
+
+        service = gitlab.get_service(GROUP_AND_PROJECT_NAME, 'slack')
+        assert service['webhook'] == "https://slack.example.com/services"
+        assert service['branches_to_be_notified'] == "default"
 
     def test__jira_commit_events(self, gitlab):
         gf = GitLabForm(config_string=config_service_jira_commit_events,
