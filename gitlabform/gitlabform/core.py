@@ -437,7 +437,9 @@ class GitLabFormCore(object):
                 logging.debug("Deleting service '%s'", service)
                 self.gl.delete_service(project_and_group, service)
             else:
-                logging.debug("Setting service '%s'", service)
+                logging.debug("Setting service '%s' (actually, as a workaround for GitLab bug, deleting the service"
+                              " and then setting it)", service)
+                self.gl.delete_service(project_and_group, service)
                 self.gl.set_service(project_and_group, service, configuration['services'][service])
 
     @if_in_config_and_not_skipped
